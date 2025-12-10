@@ -69,7 +69,7 @@ export async function verifyOtpAction(email: string, code: string) {
       return { error: "Code expired" };
     }
 
-    // Optional: Delete token after use to prevent replay attacks
+  
     // await db.delete(verificationTokens).where(eq(verificationTokens.identifier, email));
 
     return { success: true };
