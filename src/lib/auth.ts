@@ -8,10 +8,14 @@ import bcrypt from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
-  pages: { signIn: "/login", newUser: "/onboarding" },
+  pages: { 
+    signIn: "/login", 
+    // newUser is mostly for redirecting after provider signup, 
+    // but we handle flow in middleware mostly.
+    newUser: "/onboarding" 
+  },
   
   providers: [
-    // 1. Email/Password
     CredentialsProvider({
       name: "credentials",
       credentials: {
@@ -31,15 +35,14 @@ export const authOptions: NextAuthOptions = {
 
         return {
           id: user.id,
-          email: user.email,
+          email: user.email!,
           name: user.username,
           image: user.image,
-          onboardingCompleted: user.onboardingCompleted, 
+          onboardingCompleted: user.onboardingCompleted || false, 
         };
       }
     }),
 
-    // 2. Google Provider
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
@@ -47,22 +50,19 @@ export const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
-    // A. Handle Sign In Logic (Create Google User if new)
     async signIn({ user, account }) {
       if (account?.provider === "google") {
         const email = user.email;
         if (!email) return false;
 
-        // Check if user exists
         const existingUser = await db.select().from(users).where(eq(users.email, email)).limit(1);
 
         if (existingUser.length === 0) {
-          // CREATE NEW GOOGLE USER
           await db.insert(users).values({
             email: email,
             username: user.name || email.split('@')[0],
             image: user.image,
-            emailVerified: new Date(), // Google emails are verified by default
+            emailVerified: new Date(),
             onboardingCompleted: false,
           });
         }
@@ -70,30 +70,26 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
 
-    // B. Add Custom Data to Token
     async jwt({ token, user, trigger, session }) {
-      if (trigger === "update" && session?.onboardingCompleted) {
+      // Handle client-side session updates (e.g., after onboarding completes)
+      if (trigger === "update" && session?.onboardingCompleted !== undefined) {
          token.onboardingCompleted = session.onboardingCompleted;
       }
 
       if (user) {
-        // Fetch latest data from DB to ensure onboarding status is correct
+        // This runs on initial sign-in
         const dbUser = await db.select().from(users).where(eq(users.email, user.email!)).limit(1);
         if (dbUser[0]) {
             token.id = dbUser[0].id;
-            // @ts-ignore
-            token.onboardingCompleted = dbUser[0].onboardingCompleted;
+            token.onboardingCompleted = dbUser[0].onboardingCompleted || false;
         }
       }
       return token;
     },
 
-    // C. Pass Data to Client Session
     async session({ session, token }) {
       if (session.user) {
-        // @ts-ignore
         session.user.id = token.id;
-        // @ts-ignore
         session.user.onboardingCompleted = token.onboardingCompleted;
       }
       return session;

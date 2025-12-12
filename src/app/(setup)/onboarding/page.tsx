@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Check, ShoppingBag, Smartphone, ChevronRight, AlertCircle } from 'lucide-react'; // Added AlertCircle
+import Image from 'next/image'; // Import Next.js Image
+import { ArrowRight, Check, ShoppingBag, Smartphone, ChevronRight, AlertCircle } from 'lucide-react';
 import { completeOnboarding } from '@/src/actions/onboarding';
 
-// ... (Keep INDUSTRIES array exactly as it is) ...
 const INDUSTRIES = [
   { id: 'Fashion & Beauty', label: 'Fashion & Beauty', image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=600&q=80', color: 'bg-pink-500' },
   { id: 'Electronics & Tech', label: 'Electronics & Tech', image: 'https://images.unsplash.com/photo-1550009158-9ebf69173e03?auto=format&fit=crop&w=600&q=80', color: 'bg-blue-600' },
@@ -18,10 +18,27 @@ export default function OnboardingPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [isBuilding, setIsBuilding] = useState(false);
-  const [error, setError] = useState(''); // New Error State
+  const [progress, setProgress] = useState(0); // FIXED: State for progress
+  const [error, setError] = useState('');
   
   const [bizName, setBizName] = useState('');
   const [industry, setIndustry] = useState(INDUSTRIES[0]);
+
+  // FIXED: Progress Animation Logic
+  useEffect(() => {
+    if (isBuilding) {
+      const interval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            return 100;
+          }
+          return prev + 5; // Increment by 5%
+        });
+      }, 100);
+      return () => clearInterval(interval);
+    }
+  }, [isBuilding]);
 
   const handleFinish = async () => {
     setIsBuilding(true);
@@ -33,7 +50,6 @@ export default function OnboardingPage() {
     });
 
     if (result.error) {
-      // Replaces the alert()
       setError("Something went wrong saving your profile. Please try again.");
       setIsBuilding(false);
       return;
@@ -45,14 +61,14 @@ export default function OnboardingPage() {
     }, 2000);
   };
 
-  // ... (Keep Loading Screen exactly as it is) ...
   if (isBuilding) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white">
         <div className="relative">
           <div className="w-24 h-24 border-4 border-gray-100 border-t-blue-600 rounded-full animate-spin" />
           <div className="absolute inset-0 flex items-center justify-center font-bold text-blue-600">
-             {Math.floor(Math.random() * 100)}%
+             {/* FIXED: Using state instead of Math.random */}
+             {progress}%
           </div>
         </div>
         <h2 className="mt-8 text-2xl font-bold text-gray-900">Setting up your shop...</h2>
@@ -77,7 +93,6 @@ export default function OnboardingPage() {
 
         <AnimatePresence mode="wait">
           
-          {/* STEP 1 & 2 REMAIN THE SAME, I WILL JUST SHOW STEP 3 CHANGES */}
           {step === 1 && (
             <motion.div 
               key="step1"
@@ -132,8 +147,8 @@ export default function OnboardingPage() {
                          ? 'border-black bg-gray-50 shadow-md' 
                          : 'border-gray-100 hover:border-gray-300'}`}
                    >
-                     <div className={`w-12 h-12 rounded-lg ${ind.color} text-white flex items-center justify-center shrink-0`}>
-                        <ShoppingBag size={20} />
+                     <div className={`w-12 h-12 rounded-lg ${ind.color} text-white flex items-center justify-center shrink-0 relative overflow-hidden`}>
+                        <ShoppingBag size={20} className="relative z-10" />
                      </div>
                      <div>
                        <h3 className="font-bold text-gray-900">{ind.label}</h3>
@@ -175,7 +190,6 @@ export default function OnboardingPage() {
                  </div>
               </div>
 
-              {/* Error Message Display */}
               {error && (
                 <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm flex items-center gap-2">
                    <AlertCircle size={16} /> {error}
@@ -200,26 +214,32 @@ export default function OnboardingPage() {
 
       {/* --- RIGHT: LIVE PREVIEW --- */}
       <div className="hidden lg:flex bg-gray-50 items-center justify-center relative overflow-hidden">
-         <motion.div 
-           key={industry.image}
-           initial={{ opacity: 0 }}
-           animate={{ opacity: 0.1 }}
-           transition={{ duration: 1 }}
-           className="absolute inset-0 bg-cover bg-center"
-           style={{ backgroundImage: `url(${industry.image})` }}
-         />
+         {/* FIXED: Using Next/Image (requires config) */}
+         <div className="absolute inset-0">
+             <Image 
+               src={industry.image} 
+               alt="Background" 
+               fill 
+               className="object-cover opacity-10"
+               priority
+             />
+         </div>
          
          <div className="relative w-[320px] h-[640px] bg-black rounded-[3rem] border-8 border-gray-800 shadow-2xl overflow-hidden z-10">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-gray-800 rounded-b-xl z-20" />
             
             <div className="relative h-full w-full bg-white flex flex-col">
                <div className="h-2/3 relative">
-                  <img 
-                    src={industry.image} 
-                    alt="Preview" 
-                    className="h-full w-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-center p-6">
+                  {/* FIXED: Using Next/Image */}
+                  <div className="w-full h-full relative">
+                    <Image 
+                        src={industry.image} 
+                        alt="Preview" 
+                        fill
+                        className="object-cover"
+                    />
+                  </div>
+                  <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-center p-6 z-10">
                      <motion.h2 
                        className="text-white text-3xl font-bold uppercase tracking-wider mb-2"
                        initial={{ scale: 0.9 }}

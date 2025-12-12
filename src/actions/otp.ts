@@ -4,20 +4,21 @@ import { Resend } from 'resend';
 import { db } from '@/src/db';
 import { verificationTokens } from '@/src/db/schema';
 import { eq, and } from 'drizzle-orm';
+import crypto from 'crypto'; // Built-in Node module for secure numbers
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // 1. Generate & Send OTP
-
 export async function sendOtp(email: string) {
   try {
-    // Generate Code
-    const token = Math.floor(100000 + Math.random() * 900000).toString();
-    const expires = new Date(new Date().getTime() + 10 * 60 * 1000);
+    // SECURITY: Use crypto for secure random numbers instead of Math.random
+    const token = crypto.randomInt(100000, 999999).toString();
+    const expires = new Date(new Date().getTime() + 10 * 60 * 1000); // 10 mins
 
-    // DB Operations
+    // Clean up old tokens for this email first
     await db.delete(verificationTokens).where(eq(verificationTokens.identifier, email));
     
+    // Save new token
     await db.insert(verificationTokens).values({
       identifier: email,
       token,
@@ -25,24 +26,27 @@ export async function sendOtp(email: string) {
     });
 
     // Send Email
-    const { data, error } = await resend.emails.send({
+    // TS FIX: We only destructured 'error' because we don't use 'data'
+    const { error } = await resend.emails.send({
       from: 'BizPoster <onboarding@resend.dev>',
-      to: email, // <--- ON FREE TIER, THIS MUST BE YOUR EMAIL
+      to: email, // REMINDER: On free tier, this MUST be your registered account email
       subject: 'Your Verification Code',
       html: `<p>Your BizPoster code is: <strong>${token}</strong></p>`,
     });
 
     if (error) {
-      console.error("Resend API Error:", error); // <--- CHECK SERVER TERMINAL FOR THIS
+      console.error("Resend API Error:", error);
       return { error: error.message };
     }
 
-    console.log("Email sent successfully to:", email);
     return { success: true };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    // TS FIX: Handle unknown error type safely
     console.error("Send OTP System Error:", error);
-    return { error: error.message || "Failed to send code" };
+    let message = "Failed to send code";
+    if (error instanceof Error) message = error.message;
+    return { error: message };
   }
 }
 
@@ -69,12 +73,12 @@ export async function verifyOtpAction(email: string, code: string) {
       return { error: "Code expired" };
     }
 
-    // Optional: Delete token after use to prevent replay attacks
-    // await db.delete(verificationTokens).where(eq(verificationTokens.identifier, email));
+    // SECURITY: Delete token immediately after use to prevent Replay Attacks
+    await db.delete(verificationTokens).where(eq(verificationTokens.identifier, email));
 
     return { success: true };
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Verify OTP Error:", error);
     return { error: "Verification failed" };
   }
