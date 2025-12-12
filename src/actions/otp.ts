@@ -26,9 +26,8 @@ export async function sendOtp(email: string) {
     });
 
     // Send Email
-    // TS FIX: We only destructured 'error' because we don't use 'data'
     const { error } = await resend.emails.send({
-      from: 'BizPoster <onboarding@resend.dev>',
+      from: 'BizPoster <onboarding@resend.dev>', // Change this to your verified domain in production
       to: email, // REMINDER: On free tier, this MUST be your registered account email
       subject: 'Your Verification Code',
       html: `<p>Your BizPoster code is: <strong>${token}</strong></p>`,
@@ -42,14 +41,12 @@ export async function sendOtp(email: string) {
     return { success: true };
 
   } catch (error: unknown) {
-    // TS FIX: Handle unknown error type safely
     console.error("Send OTP System Error:", error);
     let message = "Failed to send code";
     if (error instanceof Error) message = error.message;
     return { error: message };
   }
 }
-
 
 // 2. Verify OTP
 export async function verifyOtpAction(email: string, code: string) {

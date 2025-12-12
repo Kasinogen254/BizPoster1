@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Edit3, Eye, Download, Lock } from 'lucide-react';
 import { Poster } from '@/src/config/dashboard-data';
 import { Smartphone } from 'lucide-react';
+import Link from 'next/link';
 
 interface PosterCardProps {
   poster: Poster;
@@ -43,11 +44,12 @@ export function PosterCard({ poster, onPreview }: PosterCardProps) {
               >
                  <Eye size={18} /> Preview
               </button>
-              <button 
+            <Link
+              href={'/editor/${poster.id}'}
                 className="flex-1 bg-blue-600 text-white py-3 rounded-2xl font-bold text-sm hover:bg-blue-500 transition shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
               >
                  <Edit3 size={18} /> Edit
-              </button>
+              </Link>
            </div>
         </div>
 

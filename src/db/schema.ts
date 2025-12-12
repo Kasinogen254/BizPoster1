@@ -1,4 +1,4 @@
-import { pgTable, text, boolean, timestamp, jsonb, uuid, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, text, boolean, timestamp, jsonb, uuid, pgEnum, integer } from 'drizzle-orm/pg-core';
 
 // --- ENUMS ---
 // We define these so we can enforce specific values
@@ -77,4 +77,20 @@ export const verificationTokens = pgTable('verification_tokens', {
   identifier: text('identifier').notNull(), // The email address
   token: text('token').notNull(),         // The 6-digit code
   expires: timestamp('expires').notNull(),
+});
+export const generatedPosters = pgTable('generated_posters', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  templateId: text('template_id').notNull(), // We use text IDs for templates (e.g. 'fashion-01')
+  
+  // File Info
+  filePath: text('file_path').notNull(), // Path in Supabase Storage
+  publicUrl: text('public_url'),         // Direct link
+  
+  // Metadata
+  mode: text('mode').notNull(), // 'preview' or 'hd'
+  width: integer('width'),
+  height: integer('height'),
+  
+  createdAt: timestamp('created_at').defaultNow(),
 });
